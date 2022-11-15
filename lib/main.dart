@@ -1,7 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:hooks_riverpod/hooks_riverpod.dart';
 
+// provider는 공급자
+// provider는 창고(repository)에 데이터를 공급
+// final numProvider = Provider((_) => 2);
+//final helloWorldProvider = Provider((ref) => 1);
+final numProvider = StateProvider((_) => 2);
 void main() {
-  runApp(const MyApp());
+  runApp(MyApp());
 }
 
 class MyApp extends StatelessWidget {
@@ -9,52 +15,46 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      home: HomePage(),
+    return ProviderScope(
+      // provider스코프로 바꾸어준다.
+      child: MaterialApp(
+        home: HomePage(),
+      ),
     );
   }
 }
 
-class HomePage extends StatefulWidget {
+class HomePage extends StatelessWidget {
   const HomePage({Key? key}) : super(key: key);
 
   @override
-  State<HomePage> createState() => _HomePageState();
-}
-
-class _HomePageState extends State<HomePage> {
-  int num = 1;
-  // 리빌드 될 필요가 없는 class는 모두 const를 붙여준다.
-  void increase() {
-    // numd을 다시 build해줌
-    setState(() {
-      num++;
-    });
-  }
-
-  @override
   Widget build(BuildContext context) {
-    double size = MediaQuery.of(context).size.width;
-    double screenSize = size * 0.8;
     return Scaffold(
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Expanded(child: AComponent(num)),
-          Expanded(child: BComponent(increase)),
+          Expanded(child: AComponent()),
+          Expanded(child: BComponent()),
         ],
       ),
     );
   }
 }
 
-// num을 부모에게 전달 받음 -> 컨슈머(소비자)라고 부름, 상태를 가지고 그 상태로 그림을 그리는 클래스
-class AComponent extends StatelessWidget {
-  final int num; // final이 있다면  int가 없어도됨.
-  const AComponent(this.num, {Key? key}) : super(key: key);
+//소비자 : 소비자는 공급자(provider)에게 데이터를 요청한다(read).
+//공급자 : 공급자는 창고에서 데이터를 찾아서 돌려준다.
+class AComponent extends ConsumerWidget {
+  // 1. 리빌드 하고싶은 곳만 ConsumerWidget를 넣어준다.
+  const AComponent({Key? key}) : super(key: key);
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    // 2. WidgetRef를 넣는다. 얘를 넣으면 provider에 접근이 가능해진다.
+    // 소비를 한번만 할 때 read옵션을 사용한다.
+    // watch는 numprovider의 값이 변경될 때마다 rebuild가된다
+    //int num = ref.read(numProvider); // 2. watch, read가 있지만 read를 읽는다.
+
+    int num = ref.watch(numProvider);
     return Container(
       color: Colors.yellow,
       child: Column(
@@ -63,7 +63,7 @@ class AComponent extends StatelessWidget {
           Expanded(
             child: Align(
               child: Text(
-                "$num",
+                "${num}",
                 style: TextStyle(fontSize: 50, fontWeight: FontWeight.bold),
               ),
             ),
@@ -74,12 +74,12 @@ class AComponent extends StatelessWidget {
   }
 }
 
-class BComponent extends StatelessWidget {
-  final Function increase; // increase는 함수 타입임.  Function을 생략해도됨.
-  const BComponent(this.increase, {Key? key}) : super(key: key);
+// 서플라이어 공급자
+class BComponent extends ConsumerWidget {
+  const BComponent({Key? key}) : super(key: key);
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return Container(
       color: Colors.blue,
       child: Column(
@@ -89,10 +89,12 @@ class BComponent extends StatelessWidget {
             child: Align(
               child: ElevatedButton(
                 onPressed: () {
-                  increase();
+                  final result = ref
+                      .read(numProvider.notifier); // stateProvider이면 notifier사용
+                  result.state = result.state + 5;
                 },
                 child: Text(
-                  "숫자증가1",
+                  "숫자증가",
                   style: TextStyle(fontSize: 50, fontWeight: FontWeight.bold),
                 ),
               ),
